@@ -1,0 +1,12 @@
+{
+  "name": "bot-algorithm-tester",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Frontend and Vercel functions for Bot-Algorithm-Tester",
+  "license": "MIT",
+  "dependencies": {
+    "@vercel/kv": "^1.0.1"
+  }
+}
+
+
