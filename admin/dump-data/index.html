@@ -81,6 +81,7 @@
       </tr>
   
     </tbody>
+    
   </table>
   <script>
     (async function () {
@@ -273,11 +274,15 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
           });
-          if (!res.ok) throw new Error('Save failed');
+          if (!res.ok) {
+            let msg = '';
+            try { const t = await res.text(); msg = t; } catch (e) {}
+            throw new Error(`Save failed (${res.status}) ${msg}`);
+          }
           statusEl.textContent = 'Saved';
         } catch (e) {
           console.error(e);
-          statusEl.textContent = 'Save failed';
+          statusEl.textContent = String(e.message || e);
         }
       }
       function autoSave() { try { saveState(); } catch (e) {} }
@@ -290,6 +295,11 @@
             clampToMaxScans();
             updateApiLink();
             return true;
+          }
+          if (res.status !== 404) {
+            let msg = '';
+            try { msg = await res.text(); } catch (e) {}
+            statusEl.textContent = `Load failed (${res.status}) ${msg}`;
           }
         } catch (e) { /* ignore */ }
         return false;
