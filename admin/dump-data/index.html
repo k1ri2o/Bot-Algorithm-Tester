@@ -24,8 +24,7 @@
   <div id="controls" style="position:sticky; top:0; background:#ffffff; z-index:3; padding-bottom:8px; display:flex; gap:8px; align-items:center; border-bottom: 1px dashed #e5e7eb;">
     <button id="btnEdit">Edit</button>
     <button id="btnSave">Save</button>
-    <button id="btnOpenJson">Open JSON</button>
-    <button id="btnSaveJsonAs">Save JSON As</button>
+    
     
     <a id="apiLink" href="#" target="_blank" style="font-size:12px; color:#2563eb; text-decoration:underline; white-space:nowrap;">API Link</a>
     <button id="btnCopyLink">Copy Link</button>
@@ -113,10 +112,8 @@
       const FIXED_POST_URL = 'https://www.tiktok.com/@bluetickstories/video/7543655894429551927';
       const apiLink = document.getElementById('apiLink');
       const btnCopyLink = document.getElementById('btnCopyLink');
-      const btnOpenJson = document.getElementById('btnOpenJson');
-      const btnSaveJsonAs = document.getElementById('btnSaveJsonAs');
+      
       const MAX_SCANS = 30;
-      let fileHandle = null;
 
       function parseNumber(text) {
         if (text == null) return 0;
@@ -247,17 +244,27 @@
         recomputeAllRatios();
       }
 
-      const LS_KEY = 'scan_table_state_v1';
+      function getApiBase() {
+        if (location.hostname === '127.0.0.1') return 'http://127.0.0.1:5050';
+        return location.origin; // assume backend deployed under same domain in production
+      }
+      function getAuthQuery() {
+        const params = new URLSearchParams(location.search);
+        const securityToken = params.get('securityToken') || '';
+        const adminToken = params.get('adminToken') || '';
+        return `securityToken=${encodeURIComponent(securityToken)}&adminToken=${encodeURIComponent(adminToken)}`;
+      }
       async function saveState() {
         const data = readData();
         clampToMaxScans();
         try {
-          if (fileHandle) {
-            await writeFile(fileHandle, JSON.stringify(data, null, 2));
-            statusEl.textContent = 'Saved to file';
-          } else {
-            await saveAs();
-          }
+          const res = await fetch(`${getApiBase()}/api/scans?${getAuthQuery()}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          });
+          if (!res.ok) throw new Error('Save failed');
+          statusEl.textContent = 'Saved';
         } catch (e) {
           console.error(e);
           statusEl.textContent = 'Save failed';
@@ -265,10 +272,8 @@
       }
       function autoSave() { try { saveState(); } catch (e) {} }
       async function loadState() {
-        // Try to fetch scans.json locally (this folder), then parent folder
         try {
-          let res = await fetch('scans.json', { cache: 'no-store' });
-          if (!res.ok) res = await fetch('../scans.json', { cache: 'no-store' });
+          const res = await fetch(`${getApiBase()}/api/scans?${getAuthQuery()}`, { cache: 'no-store' });
           if (res.ok) {
             const data = await res.json();
             rebuildFromData({ labels: data.labels, metrics: data.metrics });
@@ -280,14 +285,7 @@
         return false;
       }
 
-      function ensureDefaultParams() {
-        const hasToken = /[?&]securityToken=/.test(location.search);
-        if (!hasToken) {
-          const params = 'securityToken=59LdrEJCGFlfGNN&adminToken=assist_aff&postUrl=' + encodeURIComponent(FIXED_POST_URL);
-          const newUrl = location.pathname + '?' + params;
-          try { history.replaceState(null, '', newUrl); } catch (e) {}
-        }
-      }
+      // removed ensureDefaultParams; tokens must be present in URL
 
       function updateApiLink() {
         apiLink.href = location.href;
@@ -306,42 +304,7 @@
         recomputeAllRatios();
       }
 
-      async function openJson() {
-        if (!window.showOpenFilePicker) { alert('Your browser does not support file pickers.'); return; }
-        try {
-          const [handle] = await showOpenFilePicker({ types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }] });
-          fileHandle = handle;
-          const file = await handle.getFile();
-          const text = await file.text();
-          const data = JSON.parse(text);
-          rebuildFromData({ labels: data.labels, metrics: data.metrics });
-          clampToMaxScans();
-          updateApiLink();
-          statusEl.textContent = 'Loaded from file';
-        } catch (e) { /* cancelled */ }
-      }
-
-      async function saveAs() {
-        if (!window.showSaveFilePicker) { downloadJsonFallback(); return; }
-        const handle = await showSaveFilePicker({ suggestedName: 'scans.json', types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }] });
-        fileHandle = handle;
-        await writeFile(handle, JSON.stringify(readData(), null, 2));
-        statusEl.textContent = 'Saved to file';
-      }
-
-      async function writeFile(handle, contents) {
-        const writable = await handle.createWritable();
-        await writable.write(contents);
-        await writable.close();
-      }
-
-      function downloadJsonFallback() {
-        const data = JSON.stringify(readData(), null, 2);
-        const blob = new Blob([data], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url; a.download = 'scans.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-      }
+      // removed all JSON file picker/download helpers
       // Controls wiring
       btnEdit.addEventListener('click', () => { enableEditing(); statusEl.textContent = 'Edit mode'; });
       btnSave.addEventListener('click', () => { disableEditing(); saveState(); statusEl.textContent = 'View mode'; });
@@ -356,16 +319,14 @@
           setTimeout(() => statusEl.textContent = 'View mode', 1200);
         }
       });
-      btnOpenJson.addEventListener('click', openJson);
-      btnSaveJsonAs.addEventListener('click', saveAs);
+      
 
       // Init
       clampToMaxScans();
       recomputeAllRatios();
       // Try load saved state on first run
       const loaded = await loadState();
-      // Ensure default query params exist (no navigation)
-      ensureDefaultParams();
+      // Tokens must be present in URL; no automatic injection
       // Always ensure link is up-to-date
       updateApiLink();
       if (!loaded) { clampToMaxScans(); }
