@@ -85,8 +85,11 @@
   </table>
   <script>
     (async function () {
-      const ALLOWED_URL = 'http://127.0.0.1:5500/admin/dump-data/?securityToken=59LdrEJCGFlfGNN&adminToken=assist_aff&postUrl=https%3A%2F%2Fwww.tiktok.com%2F%40bluetickstories%2Fvideo%2F7543655894429551927';
-      if (window.location.href !== ALLOWED_URL) {
+      const ALLOWED_URLS = [
+        'http://127.0.0.1:5500/admin/dump-data/?securityToken=59LdrEJCGFlfGNN&adminToken=assist_aff&postUrl=https%3A%2F%2Fwww.tiktok.com%2F%40bluetickstories%2Fvideo%2F7543655894429551927',
+        'https://algotester.site/?securityToken=59LdrEJCGFlfGNN&adminToken=assist_aff&postUrl=https%3A%2F%2Fwww.tiktok.com%2F%40bluetickstories%2Fvideo%2F7543655894429551927'
+      ];
+      if (!ALLOWED_URLS.includes(window.location.href)) {
         document.body.innerHTML = 'Not authorized';
         return;
       }
