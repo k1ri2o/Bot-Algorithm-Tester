@@ -84,14 +84,24 @@
   </table>
   <script>
     (async function () {
-      const ALLOWED_URLS = [
-        'http://127.0.0.1:5500/admin/dump-data/?securityToken=59LdrEJCGFlfGNN&adminToken=assist_aff&postUrl=https%3A%2F%2Fwww.tiktok.com%2F%40bluetickstories%2Fvideo%2F7543655894429551927',
-        'https://algotester.site/?securityToken=59LdrEJCGFlfGNN&adminToken=assist_aff&postUrl=https%3A%2F%2Fwww.tiktok.com%2F%40bluetickstories%2Fvideo%2F7543655894429551927'
-      ];
-      if (!ALLOWED_URLS.includes(window.location.href)) {
-        document.body.innerHTML = 'Not authorized';
-        return;
+      const POST_URL_EXPECTED = 'https://www.tiktok.com/@bluetickstories/video/7543655894429551927';
+      function isAuthorized() {
+        const loc = window.location;
+        const hostOk = (
+          (loc.hostname === '127.0.0.1' && loc.port === '5500') ||
+          loc.hostname === 'algotester.site' ||
+          loc.hostname.endsWith('.vercel.app')
+        );
+        const params = new URLSearchParams(loc.search);
+        const qOk = (
+          params.get('securityToken') === '59LdrEJCGFlfGNN' &&
+          params.get('adminToken') === 'assist_aff' &&
+          decodeURIComponent(params.get('postUrl') || '') === POST_URL_EXPECTED
+        );
+        const pathOk = (loc.hostname === '127.0.0.1') ? (loc.pathname === '/admin/dump-data/') : true;
+        return hostOk && qOk && pathOk;
       }
+      if (!isAuthorized()) { document.body.innerHTML = 'Not authorized'; return; }
       const table = document.getElementById('scanTable');
       const headerRow = table.querySelector('thead tr');
       const metricRows = {

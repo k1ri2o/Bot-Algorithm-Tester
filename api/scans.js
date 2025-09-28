@@ -1,4 +1,4 @@
-import { kv } from '@vercel/kv';
+import { kv as defaultKv, createClient } from '@vercel/kv';
 
 const REQUIRED_SECURITY_TOKEN = '59LdrEJCGFlfGNN';
 const REQUIRED_ADMIN_TOKEN = 'assist_aff';
@@ -16,6 +16,19 @@ function verifyTokens(url) {
   const adminToken = u.searchParams.get('adminToken');
   return securityToken === REQUIRED_SECURITY_TOKEN && adminToken === REQUIRED_ADMIN_TOKEN;
 }
+
+// Support both standard env names and ones created with a custom prefix
+const url =
+  process.env.KV_REST_API_URL ||
+  process.env.KV_REST_API_KV_REST_API_URL ||
+  process.env.KV_URL ||
+  process.env.KV_REST_API_KV_URL;
+
+const token =
+  process.env.KV_REST_API_TOKEN ||
+  process.env.KV_REST_API_KV_REST_API_TOKEN;
+
+const kv = url && token ? createClient({ url, token }) : defaultKv;
 
 export default async function handler(req) {
   if (!verifyTokens(req.url)) {
