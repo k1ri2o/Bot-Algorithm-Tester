@@ -32,26 +32,20 @@ export default async function handler(req) {
   if (req.method === 'GET') {
     if (!EDGE_CONFIG_ID || !EDGE_ADMIN_TOKEN) return json(null, 500, { error: 'Edge Config credentials missing' });
     const teamId = process.env.EDGE_CONFIG_TEAM_ID || process.env.VERCEL_TEAM_ID || '';
-    const url = `https://api.vercel.com/v1/edge-config/${EDGE_CONFIG_ID}/items?keys=${encodeURIComponent(key)}${teamId ? `&teamId=${teamId}` : ''}`;
+    // Use single key param which is supported by the API
+    const url = `https://api.vercel.com/v1/edge-config/${EDGE_CONFIG_ID}/items?key=${encodeURIComponent(key)}${teamId ? `&teamId=${teamId}` : ''}`;
     const resp = await fetch(url, {
       headers: { 'Authorization': `Bearer ${EDGE_ADMIN_TOKEN}` }
     });
+    if (resp.status === 404) {
+      return json(null, 404, { error: 'No data yet' });
+    }
     if (!resp.ok) {
       const text = await resp.text().catch(() => '');
       return json(null, 500, { error: `Edge read failed (${resp.status}) ${text}` });
     }
     const payload = await resp.json().catch(() => null);
-    let val = null;
-    if (payload) {
-      if (payload.items && !Array.isArray(payload.items)) {
-        val = payload.items[key] ?? null;
-      } else if (Array.isArray(payload.items)) {
-        const found = payload.items.find(i => i.key === key);
-        val = found ? found.value : null;
-      } else if (payload[key] !== undefined) {
-        val = payload[key];
-      }
-    }
+    const val = payload && (payload.value ?? payload.items?.[key] ?? null);
     if (val == null) return json(null, 404, { error: 'No data yet' });
     return json(null, 200, val);
   }
