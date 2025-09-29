@@ -256,7 +256,10 @@
       }
 
       function getApiBase() {
-        // Always use same-origin so it works on Vercel and custom domains
+        const params = new URLSearchParams(location.search);
+        const apiBase = params.get('apiBase');
+        if (apiBase) return apiBase;
+        // Default: same-origin (works on Vercel and custom domains pointing to it)
         return location.origin;
       }
       function getAuthQuery() {
