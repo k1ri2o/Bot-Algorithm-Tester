@@ -256,8 +256,8 @@
       }
 
       function getApiBase() {
-        if (location.hostname === '127.0.0.1') return 'http://127.0.0.1:5050';
-        return location.origin; // assume backend deployed under same domain in production
+        // Always use same-origin so it works on Vercel and custom domains
+        return location.origin;
       }
       function getAuthQuery() {
         const params = new URLSearchParams(location.search);
