@@ -1,4 +1,5 @@
-// Minimal Node function using Vercel Edge Config Admin API (no SDK)
+// Vercel KV backend implementation (simplest Vercel-native)
+import { kv } from '@vercel/kv';
 
 const REQUIRED_SECURITY_TOKEN = '59LdrEJCGFlfGNN';
 const REQUIRED_ADMIN_TOKEN = 'assist_aff';
@@ -17,8 +18,7 @@ function verifyTokens(url) {
   return securityToken === REQUIRED_SECURITY_TOKEN && adminToken === REQUIRED_ADMIN_TOKEN;
 }
 
-const EDGE_CONFIG_ID = process.env.EDGE_CONFIG || process.env.NEXT_PUBLIC_EDGE_CONFIG || '';
-const EDGE_ADMIN_TOKEN = process.env.EDGE_CONFIG_ADMIN_TOKEN || '';
+// No extra setup needed here; KV credentials are injected by Vercel
 
 export default async function handler(req) {
   if (!verifyTokens(req.url)) {
@@ -30,48 +30,16 @@ export default async function handler(req) {
   const key = `scans:${postUrl}`;
 
   if (req.method === 'GET') {
-    if (!EDGE_CONFIG_ID || !EDGE_ADMIN_TOKEN) return json(null, 500, { error: 'Edge Config credentials missing' });
-    const teamId = process.env.EDGE_CONFIG_TEAM_ID || process.env.VERCEL_TEAM_ID || '';
-    const userId = process.env.EDGE_CONFIG_USER_ID || '';
-    const ownerQS = teamId ? `&teamId=${teamId}` : (userId ? `&userId=${userId}` : '');
-    const url = `https://api.vercel.com/v1/edge-config/${EDGE_CONFIG_ID}/items?key=${encodeURIComponent(key)}${ownerQS}`;
-    const resp = await fetch(url, {
-      headers: { 'Authorization': `Bearer ${EDGE_ADMIN_TOKEN}` }
-    });
-    if (resp.status === 404) {
-      return json(null, 404, { error: 'No data yet' });
-    }
-    if (!resp.ok) {
-      const text = await resp.text().catch(() => '');
-      return json(null, 500, { error: `Edge read failed (${resp.status}) ${text}` });
-    }
-    const payload = await resp.json().catch(() => null);
-    const val = payload && (payload.value ?? payload.items?.[key] ?? null);
-    if (val == null) return json(null, 404, { error: 'No data yet' });
-    return json(null, 200, val);
+    const data = await kv.get(key);
+    if (!data) return json(null, 404, { error: 'No data yet' });
+    return json(null, 200, data);
   }
   if (req.method === 'POST') {
     const body = await req.json();
     if (!body || !Array.isArray(body.labels) || typeof body.metrics !== 'object') {
       return json(null, 400, { error: 'Invalid payload' });
     }
-    if (!EDGE_CONFIG_ID || !EDGE_ADMIN_TOKEN) return json(null, 500, { error: 'Edge Config credentials missing' });
-    const teamId = process.env.EDGE_CONFIG_TEAM_ID || process.env.VERCEL_TEAM_ID || '';
-    const userId = process.env.EDGE_CONFIG_USER_ID || '';
-    const ownerQS = teamId ? `?teamId=${teamId}` : (userId ? `?userId=${userId}` : '');
-    const url = `https://api.vercel.com/v1/edge-config/${EDGE_CONFIG_ID}/items${ownerQS}`;
-    const resp = await fetch(url, {
-      method: 'PATCH',
-      headers: {
-        'Authorization': `Bearer ${EDGE_ADMIN_TOKEN}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ items: [{ operation: 'upsert', key, value: body }] })
-    });
-    if (!resp.ok) {
-      const text = await resp.text().catch(() => '');
-      return json(null, 500, { error: `Edge write failed (${resp.status}) ${text}` });
-    }
+    await kv.set(key, body);
     return json(null, 200, { ok: true });
   }
   return json(null, 405, { error: 'Method not allowed' });
