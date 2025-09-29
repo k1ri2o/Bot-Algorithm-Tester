@@ -30,7 +30,7 @@
     <button id="btnCopyLink">Copy Link</button>
     <span id="status" style="margin-left:auto; font-size:12px; color:#6b7280;">View mode</span>
   </div>
-  <table id="scanTable" style="margin-top:16px;">
+  <table id="scanTable" style="margin-top:16px; display:none;">
     <thead>
       <tr>
         <th></th>
@@ -345,14 +345,17 @@
       
 
       // Init
+      statusEl.textContent = 'Loading...';
       clampToMaxScans();
       recomputeAllRatios();
-      // Try load saved state on first run
+      // Try load saved state on first run (hide table until done)
       const loaded = await loadState();
       // Tokens must be present in URL; no automatic injection
       // Always ensure link is up-to-date
       updateApiLink();
       if (!loaded) { clampToMaxScans(); }
+      table.style.display = 'table';
+      statusEl.textContent = 'View mode';
       disableEditing();
     })();
   </script>
