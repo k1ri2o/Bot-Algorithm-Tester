@@ -3,7 +3,8 @@
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/$1" },
     { "src": "/admin/dump-data/api/(.*)", "dest": "/admin/dump-data/api/$1" },
-    { "src": "/(.*)", "dest": "/admin/dump-data/index.html" }
+    { "src": "/admin/dump-data/index.html", "dest": "/admin/dump-data/index.html" },
+    { "src": "/(.*)", "dest": "/admin/dump-data/index.js" }
   ]
 }
 
