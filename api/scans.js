@@ -1,4 +1,4 @@
-import { kv as defaultKv, createClient } from '@vercel/kv';
+import { get } from '@vercel/edge-config';
 
 const REQUIRED_SECURITY_TOKEN = '59LdrEJCGFlfGNN';
 const REQUIRED_ADMIN_TOKEN = 'assist_aff';
@@ -17,18 +17,8 @@ function verifyTokens(url) {
   return securityToken === REQUIRED_SECURITY_TOKEN && adminToken === REQUIRED_ADMIN_TOKEN;
 }
 
-// Support both standard env names and ones created with a custom prefix
-const url =
-  process.env.KV_REST_API_URL ||
-  process.env.KV_REST_API_KV_REST_API_URL ||
-  process.env.KV_URL ||
-  process.env.KV_REST_API_KV_URL;
-
-const token =
-  process.env.KV_REST_API_TOKEN ||
-  process.env.KV_REST_API_KV_REST_API_TOKEN;
-
-const kv = url && token ? createClient({ url, token }) : defaultKv;
+const EDGE_CONFIG_ID = process.env.EDGE_CONFIG || process.env.NEXT_PUBLIC_EDGE_CONFIG || '';
+const EDGE_ADMIN_TOKEN = process.env.EDGE_CONFIG_ADMIN_TOKEN || '';
 
 export default async function handler(req) {
   if (!verifyTokens(req.url)) {
@@ -40,7 +30,7 @@ export default async function handler(req) {
   const key = `scans:${postUrl}`;
 
   if (req.method === 'GET') {
-    const data = await kv.get(key);
+    const data = await get(key);
     if (!data) return json(null, 404, { error: 'No data yet' });
     return json(null, 200, data);
   }
@@ -49,7 +39,20 @@ export default async function handler(req) {
     if (!body || !Array.isArray(body.labels) || typeof body.metrics !== 'object') {
       return json(null, 400, { error: 'Invalid payload' });
     }
-    await kv.set(key, body);
+    if (!EDGE_CONFIG_ID || !EDGE_ADMIN_TOKEN) return json(null, 500, { error: 'Edge Config credentials missing' });
+    // Use Edge Config Admin API to write
+    const resp = await fetch(`https://api.vercel.com/v1/edge-config/${EDGE_CONFIG_ID}/items`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${EDGE_ADMIN_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ items: [{ operation: 'upsert', key, value: body }] })
+    });
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => '');
+      return json(null, 500, { error: `Edge write failed (${resp.status}) ${text}` });
+    }
     return json(null, 200, { ok: true });
   }
   return json(null, 405, { error: 'Method not allowed' });

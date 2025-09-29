@@ -5,7 +5,7 @@
   "description": "Frontend and Vercel functions for Bot-Algorithm-Tester",
   "license": "MIT",
   "dependencies": {
-    "@vercel/kv": "^1.0.1"
+    "@vercel/edge-config": "^1.1.1"
   }
 }
 
