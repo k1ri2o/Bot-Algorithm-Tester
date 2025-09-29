@@ -1,4 +1,4 @@
-import { get } from '@vercel/edge-config';
+// Minimal Node function using Vercel Edge Config Admin API (no SDK)
 
 const REQUIRED_SECURITY_TOKEN = '59LdrEJCGFlfGNN';
 const REQUIRED_ADMIN_TOKEN = 'assist_aff';
@@ -30,9 +30,18 @@ export default async function handler(req) {
   const key = `scans:${postUrl}`;
 
   if (req.method === 'GET') {
-    const data = await get(key);
-    if (!data) return json(null, 404, { error: 'No data yet' });
-    return json(null, 200, data);
+    if (!EDGE_CONFIG_ID || !EDGE_ADMIN_TOKEN) return json(null, 500, { error: 'Edge Config credentials missing' });
+    const resp = await fetch(`https://api.vercel.com/v1/edge-config/${EDGE_CONFIG_ID}/items?keys=${encodeURIComponent(key)}`, {
+      headers: { 'Authorization': `Bearer ${EDGE_ADMIN_TOKEN}` }
+    });
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => '');
+      return json(null, 500, { error: `Edge read failed (${resp.status}) ${text}` });
+    }
+    const payload = await resp.json().catch(() => null);
+    const val = payload && (payload.items?.[key] ?? payload[key] ?? null);
+    if (val == null) return json(null, 404, { error: 'No data yet' });
+    return json(null, 200, val);
   }
   if (req.method === 'POST') {
     const body = await req.json();
