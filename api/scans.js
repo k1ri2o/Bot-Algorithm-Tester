@@ -32,8 +32,10 @@ export default async function handler(req) {
   if (req.method === 'GET') {
     if (!EDGE_CONFIG_ID || !EDGE_ADMIN_TOKEN) return json(null, 500, { error: 'Edge Config credentials missing' });
     const teamId = process.env.EDGE_CONFIG_TEAM_ID || process.env.VERCEL_TEAM_ID || '';
+    const userId = process.env.EDGE_CONFIG_USER_ID || '';
+    const ownerQS = teamId ? `&teamId=${teamId}` : (userId ? `&userId=${userId}` : '');
     // Use single key param which is supported by the API
-    const url = `https://api.vercel.com/v1/edge-config/${EDGE_CONFIG_ID}/items?key=${encodeURIComponent(key)}${teamId ? `&teamId=${teamId}` : ''}`;
+    const url = `https://api.vercel.com/v1/edge-config/${EDGE_CONFIG_ID}/items?key=${encodeURIComponent(key)}${ownerQS}`;
     const resp = await fetch(url, {
       headers: { 'Authorization': `Bearer ${EDGE_ADMIN_TOKEN}` }
     });
@@ -56,7 +58,9 @@ export default async function handler(req) {
     }
     if (!EDGE_CONFIG_ID || !EDGE_ADMIN_TOKEN) return json(null, 500, { error: 'Edge Config credentials missing' });
     const teamId = process.env.EDGE_CONFIG_TEAM_ID || process.env.VERCEL_TEAM_ID || '';
-    const url = `https://api.vercel.com/v1/edge-config/${EDGE_CONFIG_ID}/items${teamId ? `?teamId=${teamId}` : ''}`;
+    const userId = process.env.EDGE_CONFIG_USER_ID || '';
+    const ownerQS = teamId ? `?teamId=${teamId}` : (userId ? `?userId=${userId}` : '');
+    const url = `https://api.vercel.com/v1/edge-config/${EDGE_CONFIG_ID}/items${ownerQS}`;
     // Use Edge Config Admin API to write
     const resp = await fetch(url, {
       method: 'PATCH',
