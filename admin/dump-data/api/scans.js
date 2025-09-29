@@ -31,7 +31,9 @@ export default async function handler(req) {
 
   if (req.method === 'GET') {
     if (!EDGE_CONFIG_ID || !EDGE_ADMIN_TOKEN) return json(null, 500, { error: 'Edge Config credentials missing' });
-    const resp = await fetch(`https://api.vercel.com/v1/edge-config/${EDGE_CONFIG_ID}/items?keys=${encodeURIComponent(key)}`, {
+    const teamId = process.env.EDGE_CONFIG_TEAM_ID || process.env.VERCEL_TEAM_ID || '';
+    const url = `https://api.vercel.com/v1/edge-config/${EDGE_CONFIG_ID}/items?keys=${encodeURIComponent(key)}${teamId ? `&teamId=${teamId}` : ''}`;
+    const resp = await fetch(url, {
       headers: { 'Authorization': `Bearer ${EDGE_ADMIN_TOKEN}` }
     });
     if (!resp.ok) {
@@ -39,7 +41,17 @@ export default async function handler(req) {
       return json(null, 500, { error: `Edge read failed (${resp.status}) ${text}` });
     }
     const payload = await resp.json().catch(() => null);
-    const val = payload && (payload.items?.[key] ?? payload[key] ?? null);
+    let val = null;
+    if (payload) {
+      if (payload.items && !Array.isArray(payload.items)) {
+        val = payload.items[key] ?? null;
+      } else if (Array.isArray(payload.items)) {
+        const found = payload.items.find(i => i.key === key);
+        val = found ? found.value : null;
+      } else if (payload[key] !== undefined) {
+        val = payload[key];
+      }
+    }
     if (val == null) return json(null, 404, { error: 'No data yet' });
     return json(null, 200, val);
   }
@@ -49,7 +61,9 @@ export default async function handler(req) {
       return json(null, 400, { error: 'Invalid payload' });
     }
     if (!EDGE_CONFIG_ID || !EDGE_ADMIN_TOKEN) return json(null, 500, { error: 'Edge Config credentials missing' });
-    const resp = await fetch(`https://api.vercel.com/v1/edge-config/${EDGE_CONFIG_ID}/items`, {
+    const teamId = process.env.EDGE_CONFIG_TEAM_ID || process.env.VERCEL_TEAM_ID || '';
+    const url = `https://api.vercel.com/v1/edge-config/${EDGE_CONFIG_ID}/items${teamId ? `?teamId=${teamId}` : ''}`;
+    const resp = await fetch(url, {
       method: 'PATCH',
       headers: {
         'Authorization': `Bearer ${EDGE_ADMIN_TOKEN}`,
