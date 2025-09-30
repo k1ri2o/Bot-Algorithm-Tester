@@ -85,7 +85,21 @@ export default async function handler(req) {
   }
 
   if (req.method === 'GET') {
-    const data = await kv.get(key);
+    let data = await kv.get(key);
+    if (!data) {
+      const legacyKey = `scans:${postUrl}`;
+      const legacy = await kv.get(legacyKey);
+      if (legacy) {
+        try {
+          await kv.set(key, legacy);
+          const current = (await kv.get(listKey)) || [];
+          if (!current.includes(preset)) {
+            await kv.set(listKey, current.concat([preset]));
+          }
+        } catch (e) {}
+        data = legacy;
+      }
+    }
     if (!data) return json(null, 404, { error: 'No data yet' });
     return json(null, 200, data);
   }

@@ -80,7 +80,15 @@ export default async function handler(req) {
   let labels = [];
   let metrics = { views: [], likes: [], comments: [], saves: [], shares: [] };
   try {
-    const data = await kv.get(key);
+    let data = await kv.get(key);
+    if (!data) {
+      const legacyKey = `scans:${postUrl}`;
+      const legacy = await kv.get(legacyKey);
+      if (legacy) {
+        try { await kv.set(key, legacy); } catch (e) {}
+        data = legacy;
+      }
+    }
     if (data && Array.isArray(data.labels) && data.metrics) {
       labels = data.labels.slice(0, MAX_SCANS);
       metrics = {
