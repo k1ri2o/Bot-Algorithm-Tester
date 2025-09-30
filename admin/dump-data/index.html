@@ -334,19 +334,32 @@
       });
       
 
-      // Init
+      // Init - keep page gated until data is ready
       statusEl.textContent = 'Loading...';
+      document.documentElement.setAttribute('data-ready', '0');
       clampToMaxScans();
       recomputeAllRatios();
-      // Try load saved state on first run (hide table until done)
-      const loaded = await loadState();
-      // Tokens must be present in URL; no automatic injection
-      // Always ensure link is up-to-date
       updateApiLink();
-      if (!loaded) { clampToMaxScans(); }
-      table.style.display = 'table';
-      statusEl.textContent = 'View mode';
-      disableEditing();
+
+      async function waitForDataAndShow() {
+        // First immediate attempt
+        let ready = await loadState();
+        if (!ready) {
+          // Poll until available, up to ~30s
+          const maxAttempts = 20;
+          for (let attempt = 1; attempt <= maxAttempts && !ready; attempt++) {
+            await new Promise(r => setTimeout(r, 1500));
+            ready = await loadState();
+          }
+        }
+        // Reveal page (even if not ready after timeout)
+        table.style.display = 'table';
+        statusEl.textContent = ready ? 'View mode' : 'View mode (no data)';
+        document.documentElement.setAttribute('data-ready', ready ? '1' : '0');
+        disableEditing();
+      }
+
+      await waitForDataAndShow();
     })();
   </script>
 </body>
