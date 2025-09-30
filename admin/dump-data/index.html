@@ -310,6 +310,25 @@
             try { msg = await res.text(); } catch (e) {}
             statusEl.textContent = `Load failed (${res.status}) ${msg}`;
           }
+          // If not found, try to seed from 'default' preset
+          const params = new URLSearchParams(location.search);
+          const currentPreset = params.get('preset') || 'default';
+          if (currentPreset !== 'default') {
+            const seedParams = new URLSearchParams(location.search);
+            seedParams.set('preset', 'default');
+            const seedUrl = `${getApiBase()}/api/scans?securityToken=${encodeURIComponent(seedParams.get('securityToken')||'')}&adminToken=${encodeURIComponent(seedParams.get('adminToken')||'')}&preset=default&postUrl=${encodeURIComponent(seedParams.get('postUrl')||'')}`;
+            try {
+              const seedRes = await fetch(seedUrl, { cache: 'no-store' });
+              if (seedRes.ok) {
+                const seedData = await seedRes.json();
+                rebuildFromData({ labels: seedData.labels, metrics: seedData.metrics });
+                clampToMaxScans();
+                // Persist seeded data into the current preset
+                await saveState();
+                return true;
+              }
+            } catch (e) { /* ignore */ }
+          }
         } catch (e) { /* ignore */ }
         return false;
       }
@@ -379,7 +398,7 @@
       btnNewPreset.addEventListener('click', async () => {
         const name = prompt('New preset name?');
         if (!name) return;
-        const body = { name: name };
+        const body = { name: name, copyFrom: getPreset() };
         try {
           const res = await fetch(`${getApiBase()}/api/presets?${getAuthQuery()}`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
