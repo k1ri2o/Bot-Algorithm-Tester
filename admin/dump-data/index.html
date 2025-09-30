@@ -220,6 +220,22 @@
         return { labels, metrics };
       }
 
+      function buildDefaultData() {
+        const labels = [];
+        for (let i = 1; i <= 10; i++) labels.push(`T${i}`);
+        const zeroes = Array(labels.length).fill(0);
+        return {
+          labels,
+          metrics: {
+            views: zeroes.slice(),
+            likes: zeroes.slice(),
+            comments: zeroes.slice(),
+            saves: zeroes.slice(),
+            shares: zeroes.slice()
+          }
+        };
+      }
+
       function rebuildFromData(data) {
         // Clear existing columns (keep first label th/td)
         while (headerRow.children.length > 1) headerRow.removeChild(headerRow.lastElementChild);
@@ -329,6 +345,12 @@
               }
             } catch (e) { /* ignore */ }
           }
+          // If even default is missing, seed deterministic default data
+          const fallback = buildDefaultData();
+          rebuildFromData(fallback);
+          clampToMaxScans();
+          await saveState();
+          return true;
         } catch (e) { /* ignore */ }
         return false;
       }
