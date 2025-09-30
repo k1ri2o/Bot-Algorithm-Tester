@@ -337,7 +337,7 @@
 
       async function refreshPresetList() {
         try {
-          const res = await fetch(`${getApiBase()}/api/presets?${getAuthQuery()}`, { cache: 'no-store' });
+          const res = await fetch(`${getApiBase()}/admin/dump-data/api/scans?${getAuthQuery()}&manage=list`, { cache: 'no-store' });
           const data = res.ok ? await res.json() : { presets: [] };
           const current = getPreset();
           const list = Array.isArray(data.presets) ? data.presets : [];
@@ -400,7 +400,7 @@
         if (!name) return;
         const body = { name: name, copyFrom: getPreset() };
         try {
-          const res = await fetch(`${getApiBase()}/api/presets?${getAuthQuery()}`, {
+          const res = await fetch(`${getApiBase()}/admin/dump-data/api/scans?${getAuthQuery()}&manage=create`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
           });
           if (res.ok) {
@@ -417,7 +417,7 @@
         const newName = prompt('Rename preset to?', current);
         if (!newName || newName === current) return;
         try {
-          const res = await fetch(`${getApiBase()}/api/presets?${getAuthQuery()}`, {
+          const res = await fetch(`${getApiBase()}/admin/dump-data/api/scans?${getAuthQuery()}&manage=rename`, {
             method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ oldName: current, newName })
           });
           if (res.ok) {
@@ -435,7 +435,7 @@
         const current = getPreset();
         if (!confirm(`Delete preset "${current}"?`)) return;
         try {
-          const res = await fetch(`${getApiBase()}/api/presets?${getAuthQuery()}`, {
+          const res = await fetch(`${getApiBase()}/admin/dump-data/api/scans?${getAuthQuery()}&manage=delete`, {
             method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: current })
           });
           if (res.ok) {
