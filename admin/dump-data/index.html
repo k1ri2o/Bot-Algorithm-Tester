@@ -326,10 +326,14 @@
           const res = await fetch(`${getApiBase()}/api/scans?${getAuthQuery()}`, { cache: 'no-store' });
           if (res.ok) {
             const data = await res.json();
-            rebuildFromData({ labels: data.labels, metrics: data.metrics });
-            clampToMaxScans();
-            updateApiLink();
-            return true;
+            const labelsOk = Array.isArray(data.labels) && data.labels.length > 0;
+            if (labelsOk) {
+              rebuildFromData({ labels: data.labels, metrics: data.metrics });
+              clampToMaxScans();
+              updateApiLink();
+              statusEl.textContent = `Loaded (${data.labels.length})`;
+              return true;
+            }
           }
           if (res.status !== 404) {
             let msg = '';
@@ -347,11 +351,15 @@
               const seedRes = await fetch(seedUrl, { cache: 'no-store' });
               if (seedRes.ok) {
                 const seedData = await seedRes.json();
-                rebuildFromData({ labels: seedData.labels, metrics: seedData.metrics });
-                clampToMaxScans();
-                // Persist seeded data into the current preset
-                await saveState();
-                return true;
+                const hasSeed = Array.isArray(seedData.labels) && seedData.labels.length > 0;
+                if (hasSeed) {
+                  rebuildFromData({ labels: seedData.labels, metrics: seedData.metrics });
+                  clampToMaxScans();
+                  // Persist seeded data into the current preset
+                  await saveState();
+                  statusEl.textContent = `Seeded from default (${seedData.labels.length})`;
+                  return true;
+                }
               }
             } catch (e) { /* ignore */ }
           }
@@ -360,6 +368,7 @@
           rebuildFromData(fallback);
           clampToMaxScans();
           await saveState();
+          statusEl.textContent = `Seeded fallback (${fallback.labels.length})`;
           return true;
         } catch (e) { /* ignore */ }
         return false;
