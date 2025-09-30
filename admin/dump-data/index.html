@@ -439,8 +439,8 @@
       btnNewPreset.addEventListener('click', async () => {
         const name = prompt('New preset name?');
         if (!name) return;
-        // Always copy from 'default' so the latest default values seed new presets
-        const body = { name: name, copyFrom: 'default' };
+        // Clone from the currently selected preset
+        const body = { name: name, copyFrom: getPreset() };
         try {
           const res = await fetch(`${getApiBase()}/api/scans?${getAuthQuery()}&manage=create`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
