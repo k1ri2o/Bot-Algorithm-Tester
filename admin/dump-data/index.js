@@ -22,7 +22,8 @@ function formatPercent(n, decimals) {
 }
 
 function buildTableHtml(labels, metrics) {
-  const headerCells = ['<th></th>'].concat(labels.map(l => `<th>${l}</th>`)).join('');
+  // Match original label format spacing exactly
+  const headerCells = ['<th></th>'].concat(labels.map(l => `<th>${l}</th>`)).join(' ');
 
   function row(metricKey, label) {
     const arr = Array.isArray(metrics[metricKey]) ? metrics[metricKey] : [];

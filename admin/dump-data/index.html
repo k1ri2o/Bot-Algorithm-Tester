@@ -231,8 +231,20 @@
       }
 
       function buildDefaultData() {
+        // Build labels in the original format: "Scan N @ YYYY-MM-DD  HH:MM  UTC"
         const labels = [];
-        for (let i = 1; i <= 10; i++) labels.push(`T${i}`);
+        const now = new Date();
+        const baseUtcMs = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), now.getUTCHours(), 0, 0, 0);
+        function pad(n) { return String(n).padStart(2, '0'); }
+        for (let i = 0; i < 10; i++) {
+          const d = new Date(baseUtcMs + i * 60 * 60 * 1000);
+          const y = d.getUTCFullYear();
+          const m = pad(d.getUTCMonth() + 1);
+          const day = pad(d.getUTCDate());
+          const hh = pad(d.getUTCHours());
+          const mm = '00';
+          labels.push(`Scan ${i + 1} @ ${y}-${m}-${day}  ${hh}:${mm}  UTC`);
+        }
         const zeroes = Array(labels.length).fill(0);
         return {
           labels,
