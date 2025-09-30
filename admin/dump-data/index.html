@@ -439,8 +439,8 @@
       btnNewPreset.addEventListener('click', async () => {
         const name = prompt('New preset name?');
         if (!name) return;
-        // Clone from the currently selected preset
-        const body = { name: name, copyFrom: getPreset() };
+        // Create empty preset, then seed with zeros
+        const body = { name: name };
         try {
           const res = await fetch(`${getApiBase()}/api/scans?${getAuthQuery()}&manage=create`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
@@ -448,7 +448,9 @@
           if (res.ok) {
             setPreset(name);
             await refreshPresetList();
-            await loadState();
+            const zeros = buildDefaultData();
+            rebuildFromData(zeros);
+            await saveState();
             recomputeAllRatios();
           }
         } catch (e) {}
