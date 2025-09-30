@@ -24,7 +24,10 @@
   <div id="controls" style="position:sticky; top:0; background:#ffffff; z-index:3; padding-bottom:8px; display:flex; gap:8px; align-items:center; border-bottom: 1px dashed #e5e7eb;">
     <button id="btnEdit">Edit</button>
     <button id="btnSave">Save</button>
-    
+    <select id="presetSelect" class="input"></select>
+    <button id="btnNewPreset">New</button>
+    <button id="btnRenamePreset">Rename</button>
+    <button id="btnDeletePreset">Delete</button>
     
     <a id="apiLink" href="#" target="_blank" style="font-size:12px; color:#2563eb; text-decoration:underline; white-space:nowrap;">API Link</a>
     <button id="btnCopyLink">Copy Link</button>
@@ -109,6 +112,10 @@
       const btnEdit = document.getElementById('btnEdit');
       const btnSave = document.getElementById('btnSave');
       const statusEl = document.getElementById('status');
+      const presetSelect = document.getElementById('presetSelect');
+      const btnNewPreset = document.getElementById('btnNewPreset');
+      const btnRenamePreset = document.getElementById('btnRenamePreset');
+      const btnDeletePreset = document.getElementById('btnDeletePreset');
       // Fixed to TikTok post URL
       const FIXED_POST_URL = 'https://www.tiktok.com/@bluetickstories/video/7543655894429551927';
       const apiLink = document.getElementById('apiLink');
@@ -256,7 +263,16 @@
         const params = new URLSearchParams(location.search);
         const securityToken = params.get('securityToken') || '';
         const adminToken = params.get('adminToken') || '';
-        return `securityToken=${encodeURIComponent(securityToken)}&adminToken=${encodeURIComponent(adminToken)}`;
+        const preset = params.get('preset') || 'default';
+        const postUrl = params.get('postUrl') || '';
+        return `securityToken=${encodeURIComponent(securityToken)}&adminToken=${encodeURIComponent(adminToken)}&preset=${encodeURIComponent(preset)}&postUrl=${encodeURIComponent(postUrl)}`;
+      }
+      function getPreset() { return new URLSearchParams(location.search).get('preset') || 'default'; }
+      function setPreset(preset) {
+        const params = new URLSearchParams(location.search);
+        params.set('preset', preset);
+        const url = `${location.pathname}?${params.toString()}`;
+        history.replaceState(null, '', url);
       }
       async function saveState() {
         const data = readData();
@@ -300,6 +316,24 @@
 
       // removed ensureDefaultParams; tokens must be present in URL
 
+      async function refreshPresetList() {
+        try {
+          const res = await fetch(`${getApiBase()}/api/presets?${getAuthQuery()}`, { cache: 'no-store' });
+          const data = res.ok ? await res.json() : { presets: [] };
+          const current = getPreset();
+          const list = Array.isArray(data.presets) ? data.presets : [];
+          presetSelect.innerHTML = '';
+          const ensure = (arr, name) => (arr.includes(name) ? arr : arr.concat([name]));
+          ensure(list, 'default').forEach(name => {
+            const opt = document.createElement('option');
+            opt.value = name;
+            opt.textContent = name;
+            if (name === current) opt.selected = true;
+            presetSelect.appendChild(opt);
+          });
+        } catch (e) { /* ignore */ }
+      }
+
       function updateApiLink() {
         apiLink.href = location.href;
         apiLink.textContent = 'API Link';
@@ -332,6 +366,69 @@
           setTimeout(() => statusEl.textContent = 'View mode', 1200);
         }
       });
+
+      presetSelect.addEventListener('change', async () => {
+        setPreset(presetSelect.value);
+        statusEl.textContent = 'Loading...';
+        await loadState();
+        recomputeAllRatios();
+        statusEl.textContent = 'View mode';
+        updateApiLink();
+      });
+
+      btnNewPreset.addEventListener('click', async () => {
+        const name = prompt('New preset name?');
+        if (!name) return;
+        const body = { name: name };
+        try {
+          const res = await fetch(`${getApiBase()}/api/presets?${getAuthQuery()}`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+          });
+          if (res.ok) {
+            setPreset(name);
+            await refreshPresetList();
+            await loadState();
+            recomputeAllRatios();
+          }
+        } catch (e) {}
+      });
+
+      btnRenamePreset.addEventListener('click', async () => {
+        const current = getPreset();
+        const newName = prompt('Rename preset to?', current);
+        if (!newName || newName === current) return;
+        try {
+          const res = await fetch(`${getApiBase()}/api/presets?${getAuthQuery()}`, {
+            method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ oldName: current, newName })
+          });
+          if (res.ok) {
+            setPreset(newName);
+            await refreshPresetList();
+            await loadState();
+            recomputeAllRatios();
+            statusEl.textContent = 'Renamed';
+            setTimeout(() => statusEl.textContent = 'View mode', 1200);
+          }
+        } catch (e) {}
+      });
+
+      btnDeletePreset.addEventListener('click', async () => {
+        const current = getPreset();
+        if (!confirm(`Delete preset "${current}"?`)) return;
+        try {
+          const res = await fetch(`${getApiBase()}/api/presets?${getAuthQuery()}`, {
+            method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: current })
+          });
+          if (res.ok) {
+            setPreset('default');
+            await refreshPresetList();
+            await loadState();
+            recomputeAllRatios();
+            statusEl.textContent = 'Deleted';
+            setTimeout(() => statusEl.textContent = 'View mode', 1200);
+          }
+        } catch (e) {}
+      });
       
 
       // Init - keep page gated until data is ready
@@ -359,6 +456,7 @@
         disableEditing();
       }
 
+      await refreshPresetList();
       await waitForDataAndShow();
     })();
   </script>

@@ -27,7 +27,8 @@ export default async function handler(req) {
 
   const u = new URL(req.url);
   const postUrl = u.searchParams.get('postUrl') || 'default';
-  const key = `scans:${postUrl}`;
+  const preset = u.searchParams.get('preset') || 'default';
+  const key = `scans:${postUrl}:${preset}`;
 
   if (req.method === 'GET') {
     const data = await kv.get(key);
@@ -40,6 +41,14 @@ export default async function handler(req) {
       return json(null, 400, { error: 'Invalid payload' });
     }
     await kv.set(key, body);
+    // also maintain a list of presets per postUrl for discovery
+    const listKey = `scans:${postUrl}:__presets__`;
+    try {
+      const current = (await kv.get(listKey)) || [];
+      if (!current.includes(preset)) {
+        await kv.set(listKey, current.concat([preset]));
+      }
+    } catch (e) {}
     return json(null, 200, { ok: true });
   }
   return json(null, 405, { error: 'Method not allowed' });

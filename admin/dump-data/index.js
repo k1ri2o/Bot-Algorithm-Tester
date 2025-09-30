@@ -74,7 +74,8 @@ export default async function handler(req) {
 
   const u = new URL(req.url);
   const postUrl = u.searchParams.get('postUrl') || 'default';
-  const key = `scans:${postUrl}`;
+  const preset = u.searchParams.get('preset') || 'default';
+  const key = `scans:${postUrl}:${preset}`;
 
   let labels = [];
   let metrics = { views: [], likes: [], comments: [], saves: [], shares: [] };

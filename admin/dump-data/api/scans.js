@@ -27,12 +27,19 @@ export default async function handler(req) {
 
   const u = new URL(req.url);
   const postUrl = u.searchParams.get('postUrl') || 'default';
-  const key = `scans:${postUrl}`;
+  const preset = u.searchParams.get('preset') || 'default';
+  const key = `scans:${postUrl}:${preset}`;
 
   if (req.method === 'GET') {
     const data = await kv.get(key);
     if (!data) return json(null, 404, { error: 'No data yet' });
     return json(null, 200, data);
+  }
+  // List presets for a postUrl
+  if (req.method === 'HEAD') {
+    const listKey = `scans:${postUrl}:__presets__`;
+    const list = (await kv.get(listKey)) || [];
+    return json(null, 200, { presets: list });
   }
   if (req.method === 'POST') {
     const body = await req.json();
@@ -40,6 +47,13 @@ export default async function handler(req) {
       return json(null, 400, { error: 'Invalid payload' });
     }
     await kv.set(key, body);
+    const listKey = `scans:${postUrl}:__presets__`;
+    try {
+      const current = (await kv.get(listKey)) || [];
+      if (!current.includes(preset)) {
+        await kv.set(listKey, current.concat([preset]));
+      }
+    } catch (e) {}
     return json(null, 200, { ok: true });
   }
   return json(null, 405, { error: 'Method not allowed' });
